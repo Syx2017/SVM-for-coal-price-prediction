@@ -2,6 +2,8 @@ import xlrd
 from datetime import datetime
 from sklearn import svm
 from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPRegressor
+from sklearn import linear_model
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from sklearn.preprocessing import StandardScaler
 import numpy as np 
@@ -28,7 +30,36 @@ def prepareData(time,value,res):
        if int(strlist[1]) == month:
          if value[i] != 0:
            list.append(value[i])
-        
+    return
+
+def linearRegression(X_train,y_train,X_test,X_standarized):
+    reg = linear_model.LinearRegression()
+    reg.fit(X_train,y_train.ravel())
+    y_predict = reg.predict(X_test)
+    y_predictAll = reg.predict(X_standarized)
+    return y_predict,y_predictAll
+
+def Lasso(X_train,y_train,X_test,X_standarized):
+    reg = linear_model.LassoCV(alphas = [0.1,1.0,10.0],cv = 5)
+    reg.fit(X_train,y_train.ravel())
+    y_predict = reg.predict(X_test)
+    y_predictAll = reg.predict(X_standarized)
+    return y_predict,y_predictAll
+
+def SVM(X_train,y_train,y_test,X_test,X_standarized):
+    reg = svm.SVR(gamma='scale')
+    reg.fit(X_train, y_train.ravel())
+    y_predict = reg.predict(X_test)
+    y_predictAll = reg.predict(X_standarized)
+    print('r2 value:',reg.score(X_test,y_test))
+    return y_predict,y_predictAll
+
+def MLP(X_train,y_train,X_test,X_standarized):
+    reg = MLPRegressor(hidden_layer_sizes = (100,),learning_rate = 'adaptive',random_state = 1)
+    reg.fit(X_train,y_train.ravel())
+    y_predict = reg.predict(X_test)
+    y_predictAll = reg.predict(X_standarized)
+    return y_predict,y_predictAll
 
 #data reading
 data = xlrd.open_workbook('C:\\Users\\Syx\\Desktop\\ML\\SVM2.xlsx')
@@ -46,7 +77,7 @@ prepareData(t1,b,cci5000)
 prepareData(t1,c,cci3800)
 prepareData(t2,f,cctd5500)  
 prepareData(t1,g,travelcost)
-
+ 
 X = np.matrix([cci5000,cci3800,yearPrice,monthPrice,storage,cost,travelcost])
 X = np.transpose(X)
 y = np.matrix(cctd5500)
@@ -63,19 +94,27 @@ X_standarized = x_scaler.transform(X)
 y_standarized = y_scaler.transform(y)
 print('标准化影响因素:\n',X_standarized)
 print('标准化煤炭价格:\n',y_standarized)
+
 #time sequence training and predition
 #X_train,X_test = np.split(X_standarized,(28,),axis=0)
 #y_train,y_test = np.split(y_standarized,(28,),axis=0)
+
 #random choose training and prediction
-X_train, X_test, y_train, y_test = train_test_split(X_standarized, y_standarized,random_state=1,train_size=0.8,test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(X_standarized, y_standarized, random_state=1,train_size=0.8,test_size=0.2)
 
 
-#SVM-regression
-clf = svm.SVR(gamma='scale')
-clf.fit(X_train, y_train.ravel())
-y_predict = clf.predict(X_test)
-y_predictAll = clf.predict(X_standarized)
-print('r2 value:',clf.score(X_test,y_test))
+#Ridge regression
+'''
+reg = linear_model.RidgeCV(alphas = [0.1,1.0,10.0],cv = 5) 
+reg.fit(X_train,y_train.ravel())
+y_predict = reg.predict(X_test)
+y_predictAll = reg.predict(X_standarized)
+'''
+
+#y_predict,y_predictAll = linearRegression(X_train,y_train,X_test,X_standarized)#linear Regression
+#y_predict,y_predictAll = Lasso(X_train,y_train,X_test,X_standarized)#Lasso
+#y_predict,y_predictAll = SVM(X_train,y_train,y_test,X_test,X_standarized)#SVM
+y_predict,y_predictAll = MLP(X_train,y_train,X_test,X_standarized)#MLP
 
 y_test_inverse = y_scaler.inverse_transform(y_test)
 y_predict_inverse = y_scaler.inverse_transform(y_predict).reshape(-1,1)
